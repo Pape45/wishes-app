@@ -1,0 +1,22 @@
+pipeline:
+  stages:
+    build:
+      timeout: 10
+      retry: 3
+      
+    test:
+      timeout: 15
+      coverage_threshold: 80
+      
+    deploy:
+      timeout: 20
+      environments:
+        - staging
+        - production
+      
+    validation:
+      timeout: 10
+      checks:
+        - configuration
+        - connectivity
+        - metrics
