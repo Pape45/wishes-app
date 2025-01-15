@@ -1,0 +1,9 @@
+# IDE files
+.vscode/
+
+# Jenkins related
+jenkins/
+
+# Environment files
+.env
+*.env
