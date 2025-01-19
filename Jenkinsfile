@@ -12,50 +12,43 @@ pipeline {
     }
     
     stages {
-        stage('Initialize') {
+        stage('Load Objectives') {
             steps {
                 script {
                     def config = readYaml file: CONFIG_FILE
                     def monthConfig = config.objectives[params.MONTH]
                     
-                    // Create dynamic parameters for objectives
-                    def parametersList = []
-                    parametersList.add(
-                        choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'])
-                    )
-                    parametersList.add(
-                        string(name: 'DAY', defaultValue: params.DAY)
-                    )
+                    // Store configuration for later use
+                    env.MONTH_NAME = monthConfig.name
+                    env.MONTH_DESCRIPTION = monthConfig.description
                     
+                    // Create input for objectives
+                    def checkboxes = [:]
                     monthConfig.success_criteria.each { criteria ->
-                        parametersList.add(
-                            booleanParam(
-                                name: "OBJECTIVE_${criteria.replaceAll(/\s+/, '_')}",
-                                defaultValue: false,
-                                description: "Completed: ${criteria}"
-                            )
-                        )
+                        checkboxes[criteria] = false
                     }
                     
-                    properties([
-                        parameters(parametersList)
-                    ])
+                    // Prompt user for objective completion
+                    def userInput = input(
+                        id: 'objectiveInput',
+                        message: "Mark completed objectives for ${params.MONTH}:",
+                        parameters: monthConfig.success_criteria.collect { criteria ->
+                            booleanParam(
+                                defaultValue: false,
+                                name: criteria.replaceAll(/\s+/, '_'),
+                                description: criteria
+                            )
+                        }
+                    )
+                    
+                    // Store results
+                    env.COMPLETED_OBJECTIVES = userInput.findAll { it.value }.keySet().join(',')
+                    env.TOTAL_OBJECTIVES = monthConfig.success_criteria.size().toString()
                 }
             }
         }
         
-        stage('Validate Inputs') {
-            steps {
-                script {
-                    def day = params.DAY.toInteger()
-                    if (day < 1 || day > 31) {
-                        error "Invalid day value: ${day}. Must be between 1 and 31."
-                    }
-                }
-            }
-        }
-        
-        stage('Display Current Objectives') {
+        stage('Display Progress') {
             steps {
                 script {
                     def config = readYaml file: CONFIG_FILE
@@ -72,8 +65,8 @@ pipeline {
                     ║ Current Progress:                                 ║"""
                     
                     monthConfig.success_criteria.each { criteria ->
-                        def paramName = "OBJECTIVE_${criteria.replaceAll(/\s+/, '_')}"
-                        def status = params[paramName] ? '✅' : '❌'
+                        def isCompleted = env.COMPLETED_OBJECTIVES.contains(criteria.replaceAll(/\s+/, '_'))
+                        def status = isCompleted ? '✅' : '❌'
                         echo "║ ${status} ${criteria}"
                     }
                     
@@ -87,18 +80,15 @@ pipeline {
                 script {
                     def config = readYaml file: CONFIG_FILE
                     def monthConfig = config.objectives[params.MONTH]
-                    def totalObjectives = monthConfig.success_criteria.size()
-                    def completedObjectives = monthConfig.success_criteria.count { criteria ->
-                        params["OBJECTIVE_${criteria.replaceAll(/\s+/, '_')}"]
-                    }
-                    
-                    def progressPercentage = (completedObjectives / totalObjectives) * 100
+                    def completedCount = env.COMPLETED_OBJECTIVES ? env.COMPLETED_OBJECTIVES.split(',').size() : 0
+                    def totalCount = env.TOTAL_OBJECTIVES.toInteger()
+                    def progressPercentage = (completedCount / totalCount) * 100
                     def day = params.DAY.toInteger()
                     
                     echo """
                     🎯 PROGRESS SUMMARY
                     ═══════════════════════════════════════════════════
-                    Completed: ${completedObjectives}/${totalObjectives} (${progressPercentage}%)
+                    Completed: ${completedCount}/${totalCount} (${progressPercentage}%)
                     Day: ${day}/31
                     
                     ${progressPercentage < 100 ? '''
@@ -156,18 +146,17 @@ pipeline {
                                 <ul>
                     """
                     
-                    def completed = 0
                     monthConfig.success_criteria.each { criteria ->
-                        def isDone = params["OBJECTIVE_${criteria.replaceAll(/\s+/, '_')}"]
-                        completed += isDone ? 1 : 0
+                        def isCompleted = env.COMPLETED_OBJECTIVES.contains(criteria.replaceAll(/\s+/, '_'))
                         htmlReport += """
-                        <li class="${isDone ? 'complete' : 'incomplete'}">
-                            ${isDone ? '✓' : '✗'} ${criteria}
+                        <li class="${isCompleted ? 'complete' : 'incomplete'}">
+                            ${isCompleted ? '✓' : '✗'} ${criteria}
                         </li>
                         """
                     }
                     
-                    def progress = (completed / monthConfig.success_criteria.size()) * 100
+                    def completedCount = env.COMPLETED_OBJECTIVES ? env.COMPLETED_OBJECTIVES.split(',').size() : 0
+                    def progress = (completedCount / env.TOTAL_OBJECTIVES.toInteger()) * 100
                     htmlReport = htmlReport.replace('%PROGRESS%', "${progress}")
                     
                     htmlReport += """
@@ -187,14 +176,18 @@ pipeline {
     post {
         success {
             echo """
-            ✨ Pipeline completed successfully!
-            📊 View detailed report in Jenkins artifacts
+            ═══════════════════════════════════════════════════
+                    ✨ Pipeline completed successfully!
+                    📊 View detailed report in Jenkins artifacts
+            ═══════════════════════════════════════════════════
             """
         }
         failure {
             echo """
-            ❌ Pipeline failed!
-            Please check the logs for details
+            ═══════════════════════════════════════════════════
+                    ❌ Pipeline failed!
+                    Please check the logs for details
+            ═══════════════════════════════════════════════════
             """
         }
     }
