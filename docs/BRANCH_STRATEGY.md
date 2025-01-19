@@ -27,3 +27,9 @@
    - Create from: `main`
    - Merge to: `main` and `develop`
    - Naming: `hotfix/[ISSUE-NUM]`
+
+
+## Pipeline Integration
+- Feature branches trigger pipeline
+- Successful pipeline required for merge
+- Reports archived per branch

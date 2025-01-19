@@ -1,57 +1,29 @@
-# Pipeline Testing Documentation
-
 ## Test Cases
 
 ### 1. Parameter Validation
 - **Test ID**: PARAM-001
-- **Description**: Verify parameter inputs
 - **Steps**:
-  1. Launch pipeline with valid month
-  2. Launch pipeline with valid username
-- **Expected**: Parameters accepted, build starts
+  1. Select different months
+  2. Enter various days
+  3. Toggle completion status
 
-### 2. Build Stage
-- **Test ID**: BUILD-001
-- **Description**: Verify build configuration
+### 2. Objectives Display
+- **Test ID**: OBJ-001
 - **Steps**:
-  1. Check build/config.txt creation
-  2. Validate configuration content
-- **Expected**: Build files created successfully
+  1. Verify objectives loading
+  2. Check display format
+  3. Validate criteria listing
 
-### 3. Test Stage
-- **Test ID**: TEST-001
-- **Description**: Verify configuration validation
+### 3. Progress Evaluation
+- **Test ID**: PROG-001
 - **Steps**:
-  1. Run test stage
-  2. Check validation results
-- **Expected**: Tests pass, continue to deploy
+  1. Test different completion states
+  2. Verify reminder messages
+  3. Check urgency levels
 
-### 4. Deploy Stage
-- **Test ID**: DEPLOY-001
-- **Description**: Verify deployment process
+### 4. Report Generation
+- **Test ID**: REP-001
 - **Steps**:
-  1. Check file copying
-  2. Verify metadata creation
-- **Expected**: Files deployed correctly
-
-### 5. Validation Stage
-- **Test ID**: VAL-001
-- **Description**: Verify deployment validation
-- **Steps**:
-  1. Check deployed files
-  2. Verify metadata
-- **Expected**: Validation passes
-
-## Test Results Template
-```yaml
-test_execution:
-  date: YYYY-MM-DD
-  tester: USERNAME
-  results:
-    - test_id: PARAM-001
-      status: PASS/FAIL
-      notes: ""
-    - test_id: BUILD-001
-      status: PASS/FAIL
-      notes: ""
-```
+  1. Verify HTML generation
+  2. Check artifact archiving
+  3. Validate report content
