@@ -4,6 +4,7 @@ pipeline {
     parameters {
         choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], description: 'Select month for wish tracking')
         string(name: 'DAY', defaultValue: '1', description: 'Enter current day (1-31)')
+        booleanParam(name: 'ALL_OBJECTIVES_COMPLETED', defaultValue: false, description: 'Mark if all objectives for the month are completed')
     }
     
     environment {
@@ -12,43 +13,7 @@ pipeline {
     }
     
     stages {
-        stage('Load Objectives') {
-            steps {
-                script {
-                    def config = readYaml file: CONFIG_FILE
-                    def monthConfig = config.objectives[params.MONTH]
-                    
-                    // Store configuration for later use
-                    env.MONTH_NAME = monthConfig.name
-                    env.MONTH_DESCRIPTION = monthConfig.description
-                    
-                    // Create input for objectives
-                    def checkboxes = [:]
-                    monthConfig.success_criteria.each { criteria ->
-                        checkboxes[criteria] = false
-                    }
-                    
-                    // Prompt user for objective completion
-                    def userInput = input(
-                        id: 'objectiveInput',
-                        message: "Mark completed objectives for ${params.MONTH}:",
-                        parameters: monthConfig.success_criteria.collect { criteria ->
-                            booleanParam(
-                                defaultValue: false,
-                                name: criteria.replaceAll(/\s+/, '_'),
-                                description: criteria
-                            )
-                        }
-                    )
-                    
-                    // Store results
-                    env.COMPLETED_OBJECTIVES = userInput.findAll { it.value }.keySet().join(',')
-                    env.TOTAL_OBJECTIVES = monthConfig.success_criteria.size().toString()
-                }
-            }
-        }
-        
-        stage('Display Progress') {
+        stage('Display Objectives') {
             steps {
                 script {
                     def config = readYaml file: CONFIG_FILE
@@ -62,15 +27,15 @@ pipeline {
                     ║ Goal: ${monthConfig.name}
                     ║ Description: ${monthConfig.description}
                     ╠═══════════════════════════════════════════════════╣
-                    ║ Current Progress:                                 ║"""
+                    ║ Required Objectives:                              ║"""
                     
                     monthConfig.success_criteria.each { criteria ->
-                        def isCompleted = env.COMPLETED_OBJECTIVES.contains(criteria.replaceAll(/\s+/, '_'))
-                        def status = isCompleted ? '✅' : '❌'
-                        echo "║ ${status} ${criteria}"
+                        echo "║ • ${criteria}"
                     }
                     
-                    echo "╚═══════════════════════════════════════════════════╝"
+                    echo """║                                                   ║
+                    ║ Status: ${params.ALL_OBJECTIVES_COMPLETED ? '✅ Completed' : '❌ Not Completed'}
+                    ╚═══════════════════════════════════════════════════╝"""
                 }
             }
         }
@@ -80,25 +45,22 @@ pipeline {
                 script {
                     def config = readYaml file: CONFIG_FILE
                     def monthConfig = config.objectives[params.MONTH]
-                    def completedCount = env.COMPLETED_OBJECTIVES ? env.COMPLETED_OBJECTIVES.split(',').size() : 0
-                    def totalCount = env.TOTAL_OBJECTIVES.toInteger()
-                    def progressPercentage = (completedCount / totalCount) * 100
                     def day = params.DAY.toInteger()
                     
-                    echo """
-                    🎯 PROGRESS SUMMARY
-                    ═══════════════════════════════════════════════════
-                    Completed: ${completedCount}/${totalCount} (${progressPercentage}%)
-                    Day: ${day}/31
-                    
-                    ${progressPercentage < 100 ? '''
-                    ''' + (day > 25 ? '⚠️ URGENT: Time is running out!' : '📢 Keep going!') : '''
-                    🎉 CONGRATULATIONS! All objectives completed!
-                    '''}
-                    """
-                    
-                    if (progressPercentage < 100) {
-                        echo monthConfig[day <= 15 ? 'reminder_before_15' : 'reminder_after_15']
+                    if (!params.ALL_OBJECTIVES_COMPLETED) {
+                        echo """
+                        🎯 PROGRESS ALERT
+                        ═══════════════════════════════════════════════════
+                        ${day > 25 ? '⚠️ URGENT: Time is running out!' : '📢 Keep going!'}
+                        
+                        ${monthConfig[day <= 15 ? 'reminder_before_15' : 'reminder_after_15']}
+                        """
+                    } else {
+                        echo """
+                        🎉 CONGRATULATIONS!
+                        ═══════════════════════════════════════════════════
+                        All objectives for ${params.MONTH} completed!
+                        """
                     }
                 }
             }
@@ -110,8 +72,7 @@ pipeline {
                     def config = readYaml file: CONFIG_FILE
                     def monthConfig = config.objectives[params.MONTH]
                     
-                    // Create HTML report
-                    def htmlReport = """
+                    writeFile file: 'reports/progress.html', text: """
                     <html>
                         <head>
                             <style>
@@ -119,17 +80,6 @@ pipeline {
                                 .report { border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
                                 .complete { color: green; }
                                 .incomplete { color: red; }
-                                .progress-bar { 
-                                    background-color: #f0f0f0;
-                                    border-radius: 5px;
-                                    padding: 3px;
-                                }
-                                .progress-fill {
-                                    background-color: #4CAF50;
-                                    height: 20px;
-                                    border-radius: 5px;
-                                    width: %PROGRESS%%;
-                                }
                             </style>
                         </head>
                         <body>
@@ -137,36 +87,18 @@ pipeline {
                                 <h1>${params.MONTH} Progress Report</h1>
                                 <h2>${monthConfig.name}</h2>
                                 <p>${monthConfig.description}</p>
-                                
-                                <div class="progress-bar">
-                                    <div class="progress-fill"></div>
-                                </div>
-                                
-                                <h3>Objectives:</h3>
+                                <h3>Status: <span class="${params.ALL_OBJECTIVES_COMPLETED ? 'complete' : 'incomplete'}">
+                                    ${params.ALL_OBJECTIVES_COMPLETED ? '✓ Completed' : '✗ Not Completed'}
+                                </span></h3>
+                                <h3>Required Objectives:</h3>
                                 <ul>
-                    """
-                    
-                    monthConfig.success_criteria.each { criteria ->
-                        def isCompleted = env.COMPLETED_OBJECTIVES.contains(criteria.replaceAll(/\s+/, '_'))
-                        htmlReport += """
-                        <li class="${isCompleted ? 'complete' : 'incomplete'}">
-                            ${isCompleted ? '✓' : '✗'} ${criteria}
-                        </li>
-                        """
-                    }
-                    
-                    def completedCount = env.COMPLETED_OBJECTIVES ? env.COMPLETED_OBJECTIVES.split(',').size() : 0
-                    def progress = (completedCount / env.TOTAL_OBJECTIVES.toInteger()) * 100
-                    htmlReport = htmlReport.replace('%PROGRESS%', "${progress}")
-                    
-                    htmlReport += """
+                                    ${monthConfig.success_criteria.collect { "<li>$it</li>" }.join('')}
                                 </ul>
                             </div>
                         </body>
                     </html>
                     """
                     
-                    writeFile file: 'reports/progress.html', text: htmlReport
                     archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
                 }
             }
