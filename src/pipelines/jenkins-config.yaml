@@ -15,10 +15,3 @@ jenkins:
       permissions:
         - "Overall/Administer:admin"
         - "Overall/Read:authenticated"
-        
-  clouds:
-    - docker:
-        name: "docker"
-        dockerApi:
-          dockerHost:
-            uri: "unix:///var/run/docker.sock"
