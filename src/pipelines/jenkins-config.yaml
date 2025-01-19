@@ -9,9 +9,17 @@ jenkins:
       users:
         - id: "admin"
           password: "${JENKINS_ADMIN_PASSWORD}"
+        - id: "pape45"
+          password: "${PAPE_PASSWORD}"
   
   authorizationStrategy:
     globalMatrix:
       permissions:
         - "Overall/Administer:admin"
+        - "Overall/Administer:pape"
         - "Overall/Read:authenticated"
+        - "Job/Build:pape"
+        - "Job/Configure:pape"
+        - "Job/Create:pape"
+        - "Job/Delete:pape"
+        - "Job/Read:pape"
