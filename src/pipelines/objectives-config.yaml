@@ -1,0 +1,141 @@
+objectives:
+  January:
+    name: "Journal Writing"
+    description: "Write in your journal daily"
+    reminder_before_15: "Don't forget to write in your journal today - you still have time to build this habit!"
+    reminder_after_15: "Month is ending soon - make sure to complete your journal entries!"
+    success_criteria:
+      - "Daily entries logged"
+      - "Thoughts documented"
+      - "Reflections recorded"
+
+  February:
+    name: "Home Improvement"
+    description: "Make your living space better"
+    reminder_before_15: "Keep working on improving your living space - you're making progress!"
+    reminder_after_15: "Final push to complete your home improvement goals this month!"
+    success_criteria:
+      - "Space reorganized"
+      - "Improvements documented"
+      - "Changes implemented"
+
+  March:
+    name: "Self-Care"
+    description: "Focus on personal health and wellness"
+    reminder_before_15: "Keep up with your self-care routine - you're worth it!"
+    reminder_after_15: "Don't forget your wellness goals as the month ends!"
+    success_criteria:
+      - "Exercise completed"
+      - "Healthy meals prepared"
+      - "Meditation practiced"
+
+  April:
+    name: "Kindness"
+    description: "Spread kindness to others"
+    reminder_before_15: "Remember to perform your daily act of kindness!"
+    reminder_after_15: "Keep spreading kindness - the month isn't over yet!"
+    success_criteria:
+      - "Daily kind actions"
+      - "Positive interactions"
+      - "Help offered to others"
+
+  May:
+    name: "New Experiences"
+    description: "Try something you've never done before"
+    reminder_before_15: "Step out of your comfort zone - try something new today!"
+    reminder_after_15: "Still time to experience something new this month!"
+    success_criteria:
+      - "New activity attempted"
+      - "Skills learned"
+      - "Comfort zone expanded"
+
+  June:
+    name: "Family Time"
+    description: "Spend quality time with loved ones"
+    reminder_before_15: "Make time for family activities this month!"
+    reminder_after_15: "Plan those final family moments before the month ends!"
+    success_criteria:
+      - "Family activities completed"
+      - "Quality time spent"
+      - "Memories created"
+
+  July:
+    name: "Concert & Dance"
+    description: "Enjoy music and movement"
+    reminder_before_15: "Don't forget to plan your concert or dance activity!"
+    reminder_after_15: "Summer isn't over - get out and enjoy the music!"
+    success_criteria:
+      - "Events attended"
+      - "Dances participated"
+      - "Music enjoyed"
+
+  August:
+    name: "Beach Adventure"
+    description: "Experience a night under the stars"
+    reminder_before_15: "Plan your beach adventure while summer's here!"
+    reminder_after_15: "Last chance for that perfect beach night this month!"
+    success_criteria:
+      - "Beach visit planned"
+      - "Night experience completed"
+      - "Memories documented"
+
+  September:
+    name: "World Discovery"
+    description: "Explore new places"
+    reminder_before_15: "Time to plan your exploration adventure!"
+    reminder_after_15: "Don't let the month end without discovering something new!"
+    success_criteria:
+      - "New places visited"
+      - "Experiences documented"
+      - "Horizons expanded"
+
+  October:
+    name: "Study Goals"
+    description: "Learn something new"
+    reminder_before_15: "Keep up with your learning goals!"
+    reminder_after_15: "Complete your study objectives before month's end!"
+    success_criteria:
+      - "Study sessions completed"
+      - "Knowledge gained"
+      - "Progress documented"
+
+  November:
+    name: "Music Learning"
+    description: "Learn to play an instrument"
+    reminder_before_15: "Practice your instrument daily!"
+    reminder_after_15: "Keep the music going - finish strong this month!"
+    success_criteria:
+      - "Practice sessions completed"
+      - "Skills improved"
+      - "Songs learned"
+
+  December:
+    name: "Mindfulness"
+    description: "Practice conscious breathing"
+    reminder_before_15: "Remember your daily breathing exercises!"
+    reminder_after_15: "End the year mindfully - complete your breathing practices!"
+    success_criteria:
+      - "Daily practice completed"
+      - "Mindful moments recorded"
+      - "Progress tracked"
+
+notification_settings:
+  default_reminder_time: "09:00"
+  reminder_frequency: "daily"
+  urgency_levels:
+    normal:
+      before_15: "Regular reminder for {month} goals"
+      after_15: "Time is running out for {month} goals"
+    urgent:
+      before_15: "Action needed: {month} goals need attention"
+      after_15: "Urgent: Only {days_left} days to complete {month} goals"
+    success: "Congratulations! You've completed your {month} objective!"
+
+reporting:
+  daily_summary: true
+  weekly_progress: true
+  monthly_completion: true
+  metrics:
+    - completion_rate
+    - streak_count
+    - consistency_score
