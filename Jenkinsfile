@@ -4,63 +4,51 @@ pipeline {
    parameters {
        choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'])
        string(name: 'DAY', defaultValue: '1', description: 'Current day (1-31)')
-       
-       // January
+       // Dynamic task parameters for each month
        booleanParam(name: 'JANUARY_TASK1', defaultValue: false, description: 'Daily entries logged')
        booleanParam(name: 'JANUARY_TASK2', defaultValue: false, description: 'Thoughts documented')
        booleanParam(name: 'JANUARY_TASK3', defaultValue: false, description: 'Reflections recorded')
        
-       // February
        booleanParam(name: 'FEBRUARY_TASK1', defaultValue: false, description: 'Space reorganized')
        booleanParam(name: 'FEBRUARY_TASK2', defaultValue: false, description: 'Improvements documented')
        booleanParam(name: 'FEBRUARY_TASK3', defaultValue: false, description: 'Changes implemented')
        
-       // March
        booleanParam(name: 'MARCH_TASK1', defaultValue: false, description: 'Exercise completed')
        booleanParam(name: 'MARCH_TASK2', defaultValue: false, description: 'Healthy meals prepared')
        booleanParam(name: 'MARCH_TASK3', defaultValue: false, description: 'Meditation practiced')
        
-       // April
        booleanParam(name: 'APRIL_TASK1', defaultValue: false, description: 'Daily kind actions')
        booleanParam(name: 'APRIL_TASK2', defaultValue: false, description: 'Positive interactions')
        booleanParam(name: 'APRIL_TASK3', defaultValue: false, description: 'Help offered to others')
        
-       // May
        booleanParam(name: 'MAY_TASK1', defaultValue: false, description: 'New activity attempted')
        booleanParam(name: 'MAY_TASK2', defaultValue: false, description: 'Skills learned')
        booleanParam(name: 'MAY_TASK3', defaultValue: false, description: 'Comfort zone expanded')
        
-       // June
        booleanParam(name: 'JUNE_TASK1', defaultValue: false, description: 'Family activities completed')
        booleanParam(name: 'JUNE_TASK2', defaultValue: false, description: 'Quality time spent')
        booleanParam(name: 'JUNE_TASK3', defaultValue: false, description: 'Memories created')
        
-       // July
        booleanParam(name: 'JULY_TASK1', defaultValue: false, description: 'Events attended')
        booleanParam(name: 'JULY_TASK2', defaultValue: false, description: 'Dances participated')
        booleanParam(name: 'JULY_TASK3', defaultValue: false, description: 'Music enjoyed')
        
-       // August
        booleanParam(name: 'AUGUST_TASK1', defaultValue: false, description: 'Beach visit planned')
        booleanParam(name: 'AUGUST_TASK2', defaultValue: false, description: 'Night experience completed')
        booleanParam(name: 'AUGUST_TASK3', defaultValue: false, description: 'Memories documented')
        
-       // September
        booleanParam(name: 'SEPTEMBER_TASK1', defaultValue: false, description: 'New places visited')
        booleanParam(name: 'SEPTEMBER_TASK2', defaultValue: false, description: 'Experiences documented')
        booleanParam(name: 'SEPTEMBER_TASK3', defaultValue: false, description: 'Horizons expanded')
        
-       // October
        booleanParam(name: 'OCTOBER_TASK1', defaultValue: false, description: 'Study sessions completed')
        booleanParam(name: 'OCTOBER_TASK2', defaultValue: false, description: 'Knowledge gained')
        booleanParam(name: 'OCTOBER_TASK3', defaultValue: false, description: 'Progress documented')
        
-       // November
        booleanParam(name: 'NOVEMBER_TASK1', defaultValue: false, description: 'Practice sessions completed')
        booleanParam(name: 'NOVEMBER_TASK2', defaultValue: false, description: 'Skills improved')
        booleanParam(name: 'NOVEMBER_TASK3', defaultValue: false, description: 'Songs learned')
        
-       // December
        booleanParam(name: 'DECEMBER_TASK1', defaultValue: false, description: 'Daily practice completed')
        booleanParam(name: 'DECEMBER_TASK2', defaultValue: false, description: 'Mindful moments recorded')
        booleanParam(name: 'DECEMBER_TASK3', defaultValue: false, description: 'Progress tracked')
@@ -78,7 +66,6 @@ pipeline {
                    def monthConfig = config.objectives[params.MONTH]
                    def taskStatus = []
                    
-                   // Get task status based on month
                    switch(params.MONTH) {
                        case 'January':
                            taskStatus = [params.JANUARY_TASK1, params.JANUARY_TASK2, params.JANUARY_TASK3]
@@ -185,6 +172,13 @@ pipeline {
                            break
                    }
                    
+                   def taskListHtml = ''
+                   def i = 0
+                   monthConfig.success_criteria.each { task ->
+                       taskListHtml += "<li class='${taskStatus[i] ? 'complete' : 'incomplete'}'>${task} - ${taskStatus[i] ? '✓ Completed' : '◻ Pending'}</li>"
+                       i++
+                   }
+                   
                    writeFile file: "reports/${params.MONTH}_progress.html", text: """
                    <html>
                        <head>
@@ -209,9 +203,7 @@ pipeline {
                                
                                <h3>Tasks:</h3>
                                <ul>
-                                   ${monthConfig.success_criteria.withIndex().collect { task, i ->
-                                       "<li class='${taskStatus[i] ? 'complete' : 'incomplete'}'>${task} - ${taskStatus[i] ? '✓ Completed' : '◻ Pending'}</li>"
-                                   }.join('')}
+                                   ${taskListHtml}
                                </ul>
                                
                                <p>Generated on: ${new Date().format('yyyy-MM-dd HH:mm:ss')}</p>
@@ -220,7 +212,7 @@ pipeline {
                    </html>
                    """
                    
-                   archiveArtifacts artifacts: 'reports/*.html'
+                   archiveArtifacts artifacts: "reports/${params.MONTH}_progress.html"
                }
            }
        }
