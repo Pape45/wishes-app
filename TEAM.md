@@ -18,7 +18,7 @@
      - User stories creation
      - Process workflow design
 
-3. [Member 3 Name]
+3. Chair mehdi
    - Role: Quality & Testing Lead
    - Responsibilities:
      - Pipeline testing
