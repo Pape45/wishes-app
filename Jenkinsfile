@@ -1,123 +1,82 @@
 pipeline {
     agent any
     
-    environment {
-        DOCKER_IMAGE = 'resolution-tracker'
-        DOCKER_TAG = 'latest'
-        GITHUB_REPO = 'https://github.com/your-org/resolution-tracker.git'
+    parameters {
+        choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'])
+        string(name: 'DAY', defaultValue: '1')
+        booleanParam(name: 'TASK_1_COMPLETED', defaultValue: false, description: 'First objective completed')
+        booleanParam(name: 'TASK_2_COMPLETED', defaultValue: false, description: 'Second objective completed')
+        booleanParam(name: 'TASK_3_COMPLETED', defaultValue: false, description: 'Third objective completed')
     }
     
-    parameters {
-        choice(
-            name: 'DEPLOYMENT_ENV',
-            choices: ['development', 'staging', 'production'],
-            description: 'Select deployment environment'
-        )
-        string(
-            name: 'VERSION',
-            defaultValue: '1.0.0',
-            description: 'Application version to deploy'
-        )
+    environment {
+        CONFIG_FILE = 'src/pipelines/objectives-config.yaml'
     }
     
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: env.GITHUB_REPO
-            }
-        }
-        
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        
-        stage('Run Tests') {
-            parallel {
-                stage('Unit Tests') {
-                    steps {
-                        sh 'npm run test:unit'
-                    }
-                }
-                stage('Integration Tests') {
-                    steps {
-                        sh 'npm run test:integration'
-                    }
-                }
-            }
-        }
-        
-        stage('Code Quality') {
-            steps {
-                sh 'npm run lint'
-                sh 'npm run sonar-scanner'
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                sh 'npm run build'
-                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-            }
-        }
-        
-        stage('Deploy') {
-            when {
-                expression { params.DEPLOYMENT_ENV != 'production' }
-            }
+        stage('Display Objectives') {
             steps {
                 script {
-                    def deployScript = "deploy-${params.DEPLOYMENT_ENV}.sh"
-                    sh "chmod +x scripts/${deployScript}"
-                    sh "scripts/${deployScript} ${params.VERSION}"
+                    def config = readYaml file: CONFIG_FILE
+                    def monthConfig = config.objectives[params.MONTH]
+                    def tasksCompleted = [params.TASK_1_COMPLETED, params.TASK_2_COMPLETED, params.TASK_3_COMPLETED].count { it }
+                    
+                    echo """
+                    ╔═══════════════════════════════════════════════════╗
+                    ║                 MONTHLY OBJECTIVES                 ║
+                    ╠═══════════════════════════════════════════════════╣
+                    ║ Month: ${params.MONTH}
+                    ║ Goal: ${monthConfig.name}
+                    ╠═══════════════════════════════════════════════════╣
+                    ║ Tasks Progress:                                   ║
+                    ║ [${params.TASK_1_COMPLETED ? '✓' : ' '}] ${monthConfig.success_criteria[0]}
+                    ║ [${params.TASK_2_COMPLETED ? '✓' : ' '}] ${monthConfig.success_criteria[1]}
+                    ║ [${params.TASK_3_COMPLETED ? '✓' : ' '}] ${monthConfig.success_criteria[2]}
+                    ║                                                   ║
+                    ║ Total Progress: ${tasksCompleted}/3 tasks completed
+                    ╚═══════════════════════════════════════════════════╝"""
                 }
             }
         }
         
-        stage('Production Deploy') {
-            when {
-                expression { params.DEPLOYMENT_ENV == 'production' }
-            }
-            input {
-                message 'Deploy to production?'
-                ok 'Proceed'
-            }
+        stage('Generate Report') {
             steps {
-                sh "scripts/deploy-production.sh ${params.VERSION}"
+                script {
+                    def config = readYaml file: CONFIG_FILE
+                    def monthConfig = config.objectives[params.MONTH]
+                    
+                    writeFile file: "reports/${params.MONTH}_progress.html", text: """
+                    <html>
+                        <head>
+                            <style>
+                                body { font-family: Arial; margin: 20px; }
+                                .report { border: 1px solid #ccc; padding: 20px; }
+                                .complete { color: green; }
+                                .incomplete { color: red; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="report">
+                                <h1>${params.MONTH} Progress Report</h1>
+                                <h2>${monthConfig.name}</h2>
+                                <ul>
+                                    <li class="${params.TASK_1_COMPLETED ? 'complete' : 'incomplete'}">
+                                        ${monthConfig.success_criteria[0]} - ${params.TASK_1_COMPLETED ? '✓' : '✗'}
+                                    </li>
+                                    <li class="${params.TASK_2_COMPLETED ? 'complete' : 'incomplete'}">
+                                        ${monthConfig.success_criteria[1]} - ${params.TASK_2_COMPLETED ? '✓' : '✗'}
+                                    </li>
+                                    <li class="${params.TASK_3_COMPLETED ? 'complete' : 'incomplete'}">
+                                        ${monthConfig.success_criteria[2]} - ${params.TASK_3_COMPLETED ? '✓' : '✗'}
+                                    </li>
+                                </ul>
+                            </div>
+                        </body>
+                    </html>
+                    """
+                    archiveArtifacts artifacts: 'reports/*.html'
+                }
             }
-        }
-        
-        stage('Health Check') {
-            steps {
-                sh 'scripts/health-check.sh'
-            }
-        }
-    }
-    
-    post {
-        always {
-            junit '**/test-results/*.xml'
-            publishHTML([
-                allowMissing: false,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'coverage',
-                reportFiles: 'index.html',
-                reportName: 'Coverage Report'
-            ])
-        }
-        success {
-            slackSend(
-                color: 'good',
-                message: "Build succeeded: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-            )
-        }
-        failure {
-            slackSend(
-                color: 'danger',
-                message: "Build failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-            )
         }
     }
 }
