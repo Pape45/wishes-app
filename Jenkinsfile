@@ -1,126 +1,123 @@
 pipeline {
     agent any
     
-    parameters {
-        choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], description: 'Select month for wish tracking')
-        string(name: 'DAY', defaultValue: '1', description: 'Enter current day (1-31)')
-        booleanParam(name: 'ALL_OBJECTIVES_COMPLETED', defaultValue: false, description: 'Mark if all objectives for the month are completed')
+    environment {
+        DOCKER_IMAGE = 'resolution-tracker'
+        DOCKER_TAG = 'latest'
+        GITHUB_REPO = 'https://github.com/your-org/resolution-tracker.git'
     }
     
-    environment {
-        ALERT_MESSAGE = ''
-        CONFIG_FILE = 'src/pipelines/objectives-config.yaml'
+    parameters {
+        choice(
+            name: 'DEPLOYMENT_ENV',
+            choices: ['development', 'staging', 'production'],
+            description: 'Select deployment environment'
+        )
+        string(
+            name: 'VERSION',
+            defaultValue: '1.0.0',
+            description: 'Application version to deploy'
+        )
     }
     
     stages {
-        stage('Display Objectives') {
+        stage('Checkout') {
             steps {
-                script {
-                    def config = readYaml file: CONFIG_FILE
-                    def monthConfig = config.objectives[params.MONTH]
-                    
-                    echo """
-                    ╔═══════════════════════════════════════════════════╗
-                    ║                 MONTHLY OBJECTIVES                 ║
-                    ╠═══════════════════════════════════════════════════╣
-                    ║ Month: ${params.MONTH}
-                    ║ Goal: ${monthConfig.name}
-                    ║ Description: ${monthConfig.description}
-                    ╠═══════════════════════════════════════════════════╣
-                    ║ Required Objectives:                              ║"""
-                    
-                    monthConfig.success_criteria.each { criteria ->
-                        echo "║ • ${criteria}"
-                    }
-                    
-                    echo """║                                                   ║
-                    ║ Status: ${params.ALL_OBJECTIVES_COMPLETED ? '✅ Completed' : '❌ Not Completed'}
-                    ╚═══════════════════════════════════════════════════╝"""
-                }
+                git branch: 'main', url: env.GITHUB_REPO
             }
         }
         
-        stage('Evaluate Progress') {
+        stage('Install Dependencies') {
             steps {
-                script {
-                    def config = readYaml file: CONFIG_FILE
-                    def monthConfig = config.objectives[params.MONTH]
-                    def day = params.DAY.toInteger()
-                    
-                    if (!params.ALL_OBJECTIVES_COMPLETED) {
-                        echo """
-                        🎯 PROGRESS ALERT
-                        ═══════════════════════════════════════════════════
-                        ${day > 25 ? '⚠️ URGENT: Time is running out!' : '📢 Keep going!'}
-                        
-                        ${monthConfig[day <= 15 ? 'reminder_before_15' : 'reminder_after_15']}
-                        """
-                    } else {
-                        echo """
-                        🎉 CONGRATULATIONS!
-                        ═══════════════════════════════════════════════════
-                        All objectives for ${params.MONTH} completed!
-                        """
+                sh 'npm install'
+            }
+        }
+        
+        stage('Run Tests') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        sh 'npm run test:unit'
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        sh 'npm run test:integration'
                     }
                 }
             }
         }
         
-        stage('Generate Report') {
+        stage('Code Quality') {
+            steps {
+                sh 'npm run lint'
+                sh 'npm run sonar-scanner'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh 'npm run build'
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+            }
+        }
+        
+        stage('Deploy') {
+            when {
+                expression { params.DEPLOYMENT_ENV != 'production' }
+            }
             steps {
                 script {
-                    def config = readYaml file: CONFIG_FILE
-                    def monthConfig = config.objectives[params.MONTH]
-                    
-                    writeFile file: 'reports/progress.html', text: """
-                    <html>
-                        <head>
-                            <style>
-                                body { font-family: Arial; margin: 20px; }
-                                .report { border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
-                                .complete { color: green; }
-                                .incomplete { color: red; }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="report">
-                                <h1>${params.MONTH} Progress Report</h1>
-                                <h2>${monthConfig.name}</h2>
-                                <p>${monthConfig.description}</p>
-                                <h3>Status: <span class="${params.ALL_OBJECTIVES_COMPLETED ? 'complete' : 'incomplete'}">
-                                    ${params.ALL_OBJECTIVES_COMPLETED ? '✓ Completed' : '✗ Not Completed'}
-                                </span></h3>
-                                <h3>Required Objectives:</h3>
-                                <ul>
-                                    ${monthConfig.success_criteria.collect { "<li>$it</li>" }.join('')}
-                                </ul>
-                            </div>
-                        </body>
-                    </html>
-                    """
-                    
-                    archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+                    def deployScript = "deploy-${params.DEPLOYMENT_ENV}.sh"
+                    sh "chmod +x scripts/${deployScript}"
+                    sh "scripts/${deployScript} ${params.VERSION}"
                 }
+            }
+        }
+        
+        stage('Production Deploy') {
+            when {
+                expression { params.DEPLOYMENT_ENV == 'production' }
+            }
+            input {
+                message 'Deploy to production?'
+                ok 'Proceed'
+            }
+            steps {
+                sh "scripts/deploy-production.sh ${params.VERSION}"
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                sh 'scripts/health-check.sh'
             }
         }
     }
     
     post {
+        always {
+            junit '**/test-results/*.xml'
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'coverage',
+                reportFiles: 'index.html',
+                reportName: 'Coverage Report'
+            ])
+        }
         success {
-            echo """
-            ═══════════════════════════════════════════════════
-                    ✨ Pipeline completed successfully!
-                    📊 View detailed report in Jenkins artifacts
-            ═══════════════════════════════════════════════════
-            """
+            slackSend(
+                color: 'good',
+                message: "Build succeeded: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+            )
         }
         failure {
-            echo """
-            ═══════════════════════════════════════════════════
-                    ❌ Pipeline failed!
-                    Please check the logs for details
-            ═══════════════════════════════════════════════════
-            """
+            slackSend(
+                color: 'danger',
+                message: "Build failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+            )
         }
     }
 }
