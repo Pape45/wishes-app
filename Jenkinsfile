@@ -22,11 +22,14 @@ pipeline {
                     def monthTasks = getMonthTasks(params.MONTH)
 
                     // Générer dynamiquement les checkboxes
-                    def taskInputs = monthTasks.collectWithIndex { task, index ->
-                        booleanParam(
-                            name: "TASK${index + 1}", 
-                            defaultValue: false, 
-                            description: task
+                    def taskInputs = []
+                    monthTasks.eachWithIndex { task, index ->
+                        taskInputs.add(
+                            booleanParam(
+                                name: "TASK${index + 1}", 
+                                defaultValue: false, 
+                                description: task
+                            )
                         )
                     }
 
@@ -98,7 +101,7 @@ pipeline {
                             </div>
                             <h3>Tâches :</h3>
                             <ul>
-                                ${monthTasks.collectWithIndex { task, index -> 
+                                ${monthTasks.collect { task, index -> 
                                     "<li class='${tasksCompleted[index] ? "task-complete" : "task-incomplete"}'>${task} ${tasksCompleted[index] ? "✓" : "◻"}</li>"
                                 }.join("")}
                             </ul>
