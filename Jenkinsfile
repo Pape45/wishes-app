@@ -10,18 +10,30 @@ pipeline {
    }
 
    stages {
-       stage('Set Tasks') {
+       stage('Initialize') {
            steps {
                script {
                    def monthTasks = getMonthTasks(params.MONTH)
+                   currentBuild.description = "Month: ${params.MONTH}"
+                   
+                   // Update task descriptions
+                   def tasks = []
+                   monthTasks.eachWithIndex { task, index ->
+                       tasks.add(
+                           booleanParam(
+                               name: "TASK${index + 1}", 
+                               defaultValue: false, 
+                               description: task
+                           )
+                       )
+                   }
+                   
                    properties([
                        parameters([
                            choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']),
                            string(name: 'DAY', defaultValue: '1', description: 'Current day (1-31)'),
-                           booleanParam(name: 'TASK1', defaultValue: false, description: monthTasks[0]),
-                           booleanParam(name: 'TASK2', defaultValue: false, description: monthTasks[1]),
-                           booleanParam(name: 'TASK3', defaultValue: false, description: monthTasks[2])
-                       ])
+                           tasks
+                       ].flatten())
                    ])
                }
            }
