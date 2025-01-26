@@ -1,14 +1,17 @@
 # Team Members and Roles
 
 ## Team Composition
+
 1. [Member 1 Name]
+
    - Role: DevOps Engineer / Team Lead
    - Responsibilities:
      - Pipeline architecture
      - Jenkins configuration
      - Repository management
 
-2. [Member 2 Name]
+2. Aymane EL HAMRAOUI
+
    - Role: Documentation & Process Manager
    - Responsibilities:
      - Documentation maintenance
