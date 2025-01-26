@@ -2,7 +2,7 @@
 
 ## Team Composition
 
-1. [Member 1 Name]
+1. Pape Mamadou DIAGNE
 
    - Role: DevOps Engineer / Team Lead
    - Responsibilities:
