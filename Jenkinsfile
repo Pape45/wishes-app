@@ -9,32 +9,29 @@ pipeline {
        booleanParam(name: 'TASK3', defaultValue: false, description: 'Task 3')
    }
 
-   environment {
-       CONFIG_FILE = 'src/pipelines/objectives-config.yaml'
-   }
-   
    stages {
+       stage('Set Tasks') {
+           steps {
+               script {
+                   def monthTasks = getMonthTasks(params.MONTH)
+                   properties([
+                       parameters([
+                           choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']),
+                           string(name: 'DAY', defaultValue: '1', description: 'Current day (1-31)'),
+                           booleanParam(name: 'TASK1', defaultValue: false, description: monthTasks[0]),
+                           booleanParam(name: 'TASK2', defaultValue: false, description: monthTasks[1]),
+                           booleanParam(name: 'TASK3', defaultValue: false, description: monthTasks[2])
+                       ])
+                   ])
+               }
+           }
+       }
+
        stage('Display Progress') {
            steps {
                script {
                    def monthTasks = getMonthTasks(params.MONTH)
                    def taskStatus = [params.TASK1, params.TASK2, params.TASK3]
-                   
-                   def taskDescriptions = [
-                       'TASK1': monthTasks[0],
-                       'TASK2': monthTasks[1],
-                       'TASK3': monthTasks[2]
-                   ]
-                   
-                   properties([
-                       parameters([
-                           choice(name: 'MONTH', choices: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']),
-                           string(name: 'DAY', defaultValue: params.DAY, description: 'Current day (1-31)'),
-                           booleanParam(name: 'TASK1', defaultValue: taskStatus[0], description: taskDescriptions['TASK1']),
-                           booleanParam(name: 'TASK2', defaultValue: taskStatus[1], description: taskDescriptions['TASK2']),
-                           booleanParam(name: 'TASK3', defaultValue: taskStatus[2], description: taskDescriptions['TASK3'])
-                       ])
-                   ])
                    
                    echo """
                    ╔═══════════════════════════════════════════════════╗
